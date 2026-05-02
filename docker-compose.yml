@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  zapgrupos-mysql:
+    image: mysql:8.0
+    container_name: zapgrupos-mysql
+    restart: unless-stopped
+    volumes:
+      - ./.data/mysql:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: zapgrupos
+      MYSQL_ROOT_PASSWORD: Test1234
+      MYSQL_USER: user
+      MYSQL_PASSWORD: Test1234
+    ports:
+      - "3306:3306"
