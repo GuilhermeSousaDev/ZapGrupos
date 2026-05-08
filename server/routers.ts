@@ -36,11 +36,13 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
   promoteUser,
+  recalcRankScore,
   recordClick,
   recordView,
   updateCategoryGroupCount,
   updateGroup,
   updateGroupStatus,
+  updateUserGroupsVerified,
   upsertSubscription,
 } from "./db";
 import { nanoid } from "nanoid";
@@ -256,8 +258,13 @@ export const appRouter = router({
         if (!group || group.ownerId !== ctx.user.id) {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
+        const sub = await getSubscriptionByUserId(ctx.user.id);
+        const plan = (sub?.plan ?? "free") as PlanType;
+        if (PLAN_LIMITS[plan].analytics === "none") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Analytics disponível a partir do plano Starter." });
+        }
         const history = await getGroupClicksHistory(input.groupId, input.days);
-        return { group, clickHistory: history };
+        return { group, clickHistory: history, includeViews: PLAN_LIMITS[plan].analytics === "full" };
       }),
 
     createGroup: protectedProcedure
@@ -290,7 +297,7 @@ export const appRouter = router({
           g => g.status !== "banned" && g.status !== "rejected"
         ).length;
 
-        if (activeCount >= limits.maxGroups) {
+        if (limits.maxGroups !== null && activeCount >= limits.maxGroups) {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: `Seu plano ${plan} permite no máximo ${limits.maxGroups} grupo(s). Faça upgrade para adicionar mais.`,
@@ -354,9 +361,41 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    setGroupFeatured: protectedProcedure
+      .input(z.object({ groupId: z.number(), featured: z.boolean() }))
+      .mutation(async ({ input, ctx }) => {
+        const group = await getGroupById(input.groupId);
+        if (!group || group.ownerId !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        if (group.status !== "active") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Apenas grupos ativos podem ser colocados em destaque." });
+        }
+        const sub = await getSubscriptionByUserId(ctx.user.id);
+        const plan = (sub?.plan ?? "free") as PlanType;
+        const limits = PLAN_LIMITS[plan];
+        if (input.featured) {
+          if (limits.maxFeatured === 0) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Seu plano não permite grupos em destaque. Faça upgrade para Pro ou Premium." });
+          }
+          const myGroups = await getGroupsByOwner(ctx.user.id);
+          const featuredCount = myGroups.filter(g => g.isFeatured && g.id !== input.groupId).length;
+          if (featuredCount >= limits.maxFeatured) {
+            throw new TRPCError({ code: "FORBIDDEN", message: `Seu plano permite no máximo ${limits.maxFeatured} grupo(s) em destaque.` });
+          }
+        }
+        await updateGroup(input.groupId, { isFeatured: input.featured });
+        await recalcRankScore(input.groupId);
+        return { success: true };
+      }),
+
     subscription: protectedProcedure.query(async ({ ctx }) => {
       const sub = await getSubscriptionByUserId(ctx.user.id);
-      return sub ?? { plan: "free", status: "active" };
+      const plan = ((sub?.plan ?? "free") as PlanType);
+      return {
+        ...(sub ?? { plan: "free", status: "active" }),
+        limits: PLAN_LIMITS[plan],
+      };
     }),
   }),
 
@@ -403,6 +442,31 @@ export const appRouter = router({
 
         let customerId: string | undefined;
         const existingSub = await getSubscriptionByUserId(ctx.user.id);
+
+        // Upgrade / downgrade: update existing subscription instead of new checkout
+        if (existingSub?.stripeSubscriptionId && existingSub.status === "active") {
+          const subscription = await stripe.subscriptions.retrieve(
+            existingSub.stripeSubscriptionId
+          );
+          const currentItem = subscription.items.data[0];
+
+          if (currentItem?.price.id === priceId) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Você já assina este plano.",
+            });
+          }
+
+          await stripe.subscriptions.update(existingSub.stripeSubscriptionId, {
+            items: [{ id: currentItem?.id, price: priceId }],
+            proration_behavior: "create_prorations",
+            metadata: { userId: String(ctx.user.id), plan: input.plan },
+          });
+
+          // Return success URL directly — webhook will sync the DB
+          return { url: `${input.origin}/dashboard/planos?success=true` };
+        }
+
         if (existingSub?.stripeCustomerId) {
           customerId = existingSub.stripeCustomerId;
         } else {

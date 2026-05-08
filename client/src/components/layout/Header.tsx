@@ -31,14 +31,34 @@ export default function Header() {
   const { open: openAuthModal } = useAuthModal();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  console.log({ isAuthenticated, user });
-
   const { data: notifications } = trpc.notifications.list.useQuery(undefined, {
     enabled: isAuthenticated,
     refetchInterval: 30000,
   });
 
+  const { data: subscription } = trpc.dashboard.subscription.useQuery(
+    undefined,
+    {
+      enabled: isAuthenticated,
+    }
+  );
+
   const unreadCount = notifications?.filter(n => !n.isRead).length ?? 0;
+  const plan = subscription?.plan ?? "free";
+
+  const planColors: Record<string, string> = {
+    free: "text-muted-foreground border-border/60",
+    starter: "text-blue-400 border-blue-400/40",
+    pro: "text-primary border-primary/40",
+    premium: "text-yellow-400 border-yellow-400/40",
+  };
+
+  const planLabels: Record<string, string> = {
+    free: "Free",
+    starter: "Starter",
+    pro: "Pro",
+    premium: "Premium",
+  };
 
   const isActive = (path: string) =>
     location === path || location.startsWith(path + "/");
@@ -174,9 +194,9 @@ export default function Header() {
                       >
                         <Badge
                           variant="outline"
-                          className="text-xs border-primary/40 text-primary px-1.5 py-0"
+                          className={`text-xs px-1.5 py-0 ${planColors[plan]}`}
                         >
-                          Pro
+                          {planLabels[plan]}
                         </Badge>
                         Meu Plano
                       </Link>

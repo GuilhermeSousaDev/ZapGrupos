@@ -21,15 +21,14 @@ import {
   Trash2,
   BarChart3,
   ExternalLink,
-  CheckCircle,
-  Clock,
-  XCircle,
   Star,
   MousePointerClick,
   Eye,
   MessageSquare,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useState } from "react";
 
 const STATUS_MAP = {
   pending: { label: "Aguardando aprovação", variant: "outline" as const, className: "border-yellow-400/40 text-yellow-400" },
@@ -40,9 +39,14 @@ const STATUS_MAP = {
 };
 
 export default function MyGroupsPage() {
+  const [featuredLoading, setFeaturedLoading] = useState<number | null>(null);
   const { data: groups, isLoading } = trpc.dashboard.myGroups.useQuery();
+  const { data: sub } = trpc.dashboard.subscription.useQuery();
   const deleteGroup = trpc.dashboard.deleteGroup.useMutation();
+  const setGroupFeatured = trpc.dashboard.setGroupFeatured.useMutation();
   const utils = trpc.useUtils();
+
+  const maxFeatured = sub?.limits?.maxFeatured ?? 0;
 
   const handleDelete = async (id: number, name: string) => {
     try {
@@ -51,6 +55,19 @@ export default function MyGroupsPage() {
       toast.success(`Grupo "${name}" removido com sucesso`);
     } catch (e: any) {
       toast.error(e.message ?? "Erro ao remover grupo");
+    }
+  };
+
+  const handleToggleFeatured = async (id: number, currentFeatured: boolean) => {
+    setFeaturedLoading(id);
+    try {
+      await setGroupFeatured.mutateAsync({ groupId: id, featured: !currentFeatured });
+      utils.dashboard.myGroups.invalidate();
+      toast.success(currentFeatured ? "Destaque removido" : "Grupo em destaque!");
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro ao alterar destaque");
+    } finally {
+      setFeaturedLoading(null);
     }
   };
 
@@ -141,6 +158,21 @@ export default function MyGroupsPage() {
                         Métricas
                       </Button>
                     </Link>
+                    {group.status === "active" && maxFeatured > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleToggleFeatured(group.id, group.isFeatured)}
+                        disabled={featuredLoading === group.id}
+                        className={`gap-1.5 text-xs ${group.isFeatured ? "border-yellow-400/40 text-yellow-400 hover:border-yellow-400/60" : "border-border/60 hover:border-yellow-400/40"}`}
+                      >
+                        {featuredLoading === group.id
+                          ? <Loader2 className="w-3 h-3 animate-spin" />
+                          : <Star className={`w-3 h-3 ${group.isFeatured ? "fill-yellow-400" : ""}`} />
+                        }
+                        {group.isFeatured ? "Em Destaque" : "Destacar"}
+                      </Button>
+                    )}
                     {group.status === "active" && (
                       <a href={`/grupo/${group.id}`} target="_blank" rel="noopener noreferrer">
                         <Button variant="outline" size="sm" className="gap-1.5 border-border/60 text-xs">

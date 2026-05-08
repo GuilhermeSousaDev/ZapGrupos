@@ -10,6 +10,7 @@ import {
   ExternalLink,
   TrendingUp,
   Crown,
+  BadgeCheck,
 } from "lucide-react";
 import type { Group, Category } from "../../../drizzle/schema";
 
@@ -70,11 +71,19 @@ export default function GroupCard({ group, showMetrics = false }: GroupCardProps
                 <Star className="w-4 h-4 text-yellow-400 flex-shrink-0 fill-yellow-400" />
               )}
             </div>
-            {group.category && (
-              <span className="text-xs text-muted-foreground mt-0.5 block">
-                {group.category.name}
-              </span>
-            )}
+            <div className="flex items-center gap-1.5 mt-0.5">
+              {group.category && (
+                <span className="text-xs text-muted-foreground">
+                  {group.category.name}
+                </span>
+              )}
+              {group.isVerified && (
+                <span className="inline-flex items-center gap-0.5 text-[10px] text-blue-400 font-medium">
+                  <BadgeCheck className="w-3 h-3" />
+                  Verificado
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

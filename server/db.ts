@@ -287,9 +287,10 @@ export async function recalcRankScore(groupId: number): Promise<void> {
 
   const featuredBonus = group.isFeatured ? 100 : 0;
   const pinnedBonus = group.isPinned ? 50 : 0;
+  const verifiedBonus = group.isVerified ? 20 : 0;
   const clickScore = group.totalClicks * 1.5;
   const viewScore = group.totalViews * 0.5;
-  const score = featuredBonus + pinnedBonus + clickScore + viewScore;
+  const score = featuredBonus + pinnedBonus + verifiedBonus + clickScore + viewScore;
 
   await db.update(groups).set({ rankScore: score }).where(eq(groups.id, groupId));
 }
@@ -322,6 +323,14 @@ export async function getGroupClicksHistory(groupId: number, days = 30) {
     .from(clicks)
     .where(and(eq(clicks.groupId, groupId), sql`createdAt >= ${since}`))
     .orderBy(desc(clicks.createdAt));
+}
+
+export async function updateUserGroupsVerified(userId: number, isVerified: boolean): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  const userGroups = await getGroupsByOwner(userId);
+  await db.update(groups).set({ isVerified }).where(eq(groups.ownerId, userId));
+  await Promise.all(userGroups.map(g => recalcRankScore(g.id)));
 }
 
 // ─── Subscriptions ────────────────────────────────────────────────────────────
@@ -441,10 +450,10 @@ export async function getPlatformStats() {
 
 // ─── Plan limits ─────────────────────────────────────────────────────────────
 export const PLAN_LIMITS = {
-  free: { maxGroups: 1, featured: false, analytics: false, pinnedCategories: 0 },
-  starter: { maxGroups: 1, featured: true, analytics: false, pinnedCategories: 1 },
-  pro: { maxGroups: 5, featured: true, analytics: true, pinnedCategories: 3 },
-  premium: { maxGroups: 10, featured: true, analytics: true, pinnedCategories: 10 },
-} as const;
+  free:    { maxGroups: 1    as number | null, maxFeatured: 0, analytics: "none"  as "none" | "basic" | "full" },
+  starter: { maxGroups: 3    as number | null, maxFeatured: 0, analytics: "basic" as "none" | "basic" | "full" },
+  pro:     { maxGroups: 5    as number | null, maxFeatured: 1, analytics: "full"  as "none" | "basic" | "full" },
+  premium: { maxGroups: null as number | null, maxFeatured: 3, analytics: "full"  as "none" | "basic" | "full" },
+};
 
 export type PlanType = keyof typeof PLAN_LIMITS;

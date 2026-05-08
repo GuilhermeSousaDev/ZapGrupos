@@ -70,8 +70,6 @@ const PLANS = [
       "Topo absoluto do ranking",
       "Analytics avançado com gráficos",
       "Selo premium exclusivo",
-      "API de integração",
-      "Gerente de conta dedicado",
     ],
   },
 ];

@@ -58,6 +58,7 @@ export const groups = mysqlTable("groups", {
     .notNull(),
   isFeatured: boolean("isFeatured").default(false).notNull(),
   featuredUntil: timestamp("featuredUntil"),
+  isVerified: boolean("isVerified").default(false).notNull(),
   isPinned: boolean("isPinned").default(false).notNull(),
   rankScore: float("rankScore").default(0).notNull(),
   totalClicks: int("totalClicks").default(0).notNull(),
