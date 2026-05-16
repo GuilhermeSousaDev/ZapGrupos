@@ -1,4 +1,4 @@
-import "dotenv/config";
+﻿import "dotenv/config";
 import mysql from "mysql2/promise";
 import { drizzle } from "drizzle-orm/mysql2";
 import { categories } from "./schema";
@@ -102,11 +102,11 @@ async function seed() {
     console.log("🌱 Iniciando seed das categorias...");
 
     for (const category of seedCategories) {
-      await db.insert(categories).values({
-        ...category,
-        groupCount: 0,
-      });
-      console.log(`✅ Categoria criada: ${category.name}`);
+      await db
+        .insert(categories)
+        .values({ ...category, groupCount: 0 })
+        .onDuplicateKeyUpdate({ set: { name: category.name } });
+      console.log(`✅ Categoria criada/existente: ${category.name}`);
     }
 
     console.log("🎉 Seed concluído com sucesso!");
