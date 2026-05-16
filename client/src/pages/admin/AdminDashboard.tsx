@@ -18,6 +18,7 @@ import {
   TrendingUp,
   ArrowRight,
   AlertTriangle,
+  Bot,
 } from "lucide-react";
 
 export default function AdminDashboard() {
@@ -148,6 +149,19 @@ export default function AdminDashboard() {
             <h3 className="font-semibold text-foreground mb-0.5">Analytics da Plataforma</h3>
             <p className="text-xs text-muted-foreground">Métricas globais e relatórios</p>
           </Card>
+
+          <Link href="/admin/scraper">
+            <Card className="glass-card p-5 border-border/60 hover:border-green-400/40 cursor-pointer transition-all hover:-translate-y-0.5 group">
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-9 h-9 rounded-lg bg-green-400/10 flex items-center justify-center text-green-400">
+                  <Bot className="w-4 h-4" />
+                </div>
+                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-green-400 transition-colors" />
+              </div>
+              <h3 className="font-semibold text-foreground mb-0.5">Scraping Automático</h3>
+              <p className="text-xs text-muted-foreground">Importar grupos via busca web</p>
+            </Card>
+          </Link>
         </div>
 
         {/* Pending groups */}

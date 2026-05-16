@@ -134,7 +134,25 @@ export async function promoteUser(id: number, role: "user" | "admin") {
 export async function getAllCategories(): Promise<Category[]> {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(categories).orderBy(desc(categories.groupCount));
+  const rows = await db
+    .select({
+      id: categories.id,
+      name: categories.name,
+      slug: categories.slug,
+      description: categories.description,
+      icon: categories.icon,
+      color: categories.color,
+      groupCount: sql<number>`COUNT(${groups.id})`,
+      createdAt: categories.createdAt,
+    })
+    .from(categories)
+    .leftJoin(
+      groups,
+      and(eq(groups.categoryId, categories.id), eq(groups.status, "active"))
+    )
+    .groupBy(categories.id)
+    .orderBy(desc(sql`COUNT(${groups.id})`));
+  return rows as Category[];
 }
 
 export async function getCategoryBySlug(slug: string): Promise<Category | undefined> {

@@ -19,6 +19,7 @@ import PlansPage from "./pages/dashboard/PlansPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminGroups from "./pages/admin/AdminGroups";
 import AdminUsers from "./pages/admin/AdminUsers";
+import AdminScraper from "./pages/admin/AdminScraper";
 
 function Router() {
   return (
@@ -41,6 +42,7 @@ function Router() {
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin/grupos" component={AdminGroups} />
       <Route path="/admin/usuarios" component={AdminUsers} />
+      <Route path="/admin/scraper" component={AdminScraper} />
 
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

@@ -606,6 +606,55 @@ export const appRouter = router({
     promoteUser: adminProcedure
       .input(z.object({ id: z.number(), role: z.enum(["user", "admin"]) }))
       .mutation(({ input }) => promoteUser(input.id, input.role)),
+
+    scrapePreview: adminProcedure
+      .input(
+        z.object({
+          query: z.string().min(2),
+          limit: z.number().min(1).max(30).default(10),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { scrapeWhatsAppGroups } = await import("./scraper.js");
+        const groups = await scrapeWhatsAppGroups(input.query, input.limit);
+        return { groups };
+      }),
+
+    importScraped: adminProcedure
+      .input(
+        z.object({
+          categoryId: z.number(),
+          groups: z.array(
+            z.object({
+              name: z.string(),
+              description: z.string().optional(),
+              whatsappLink: z.string(),
+              imageUrl: z.string().optional(),
+            })
+          ),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        let imported = 0;
+        for (const g of input.groups) {
+          try {
+            await createGroup({
+              name: g.name,
+              description: g.description,
+              whatsappLink: g.whatsappLink,
+              categoryId: input.categoryId,
+              ownerId: ctx.user.id,
+              imageUrl: g.imageUrl,
+              status: "pending",
+              tags: [],
+            });
+            imported++;
+          } catch {
+            // skip duplicates or invalid entries
+          }
+        }
+        return { imported };
+      }),
   }),
 });
 
