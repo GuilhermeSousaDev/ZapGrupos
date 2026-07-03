@@ -4,7 +4,8 @@ import type { ConnectionOptions } from "mysql2/promise";
  * Constrói as opções de conexão MySQL a partir de DATABASE_URL.
  *
  * SSL é habilitado automaticamente para hosts remotos (Railway, PlanetScale,
- * etc.), que derrubam conexões sem TLS — causa do erro PROTOCOL_CONNECTION_LOST.
+ * etc.). Usamos rejectUnauthorized:false porque o Railway serve um certificado
+ * self-signed — com true a conexão quebra ("self-signed certificate in chain").
  * Para localhost o SSL fica desligado. Use DATABASE_SSL=true|false para forçar.
  */
 export function getMysqlConfig(): ConnectionOptions {
@@ -25,6 +26,6 @@ export function getMysqlConfig(): ConnectionOptions {
     user: decodeURIComponent(parsed.username),
     password: decodeURIComponent(parsed.password),
     database: parsed.pathname.replace(/^\//, ""),
-    ...(useSsl ? { ssl: { rejectUnauthorized: true } } : {}),
+    ...(useSsl ? { ssl: { rejectUnauthorized: false } } : {}),
   };
 }
