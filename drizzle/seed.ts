@@ -2,12 +2,13 @@
 import mysql from "mysql2/promise";
 import { drizzle } from "drizzle-orm/mysql2";
 import { categories } from "./schema";
+import { getMysqlConfig } from "./connection";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL não definida no .env");
 }
 
-const connection = await mysql.createConnection(process.env.DATABASE_URL);
+const connection = await mysql.createConnection(getMysqlConfig());
 const db = drizzle(connection);
 
 const seedCategories = [
